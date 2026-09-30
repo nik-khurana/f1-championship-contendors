@@ -15,16 +15,20 @@ A modern, high-octane Formula 1 World Drivers' Championship (WDC) calculator and
    - 🏆 **CLINCHED**: Driver has mathematically secured the title.
    - ⚡ **IN CONTENTION**: Driver can still mathematically win the WDC.
    - ❌ **ELIMINATED**: Maximum achievable points is strictly lower than the current leader's points.
-2. **"Path to the Crown" Permutations Engine**:
-   - Calculates the target driver's maximum achievable points.
-   - Shows the exact maximum points the current leader is allowed to score.
-   - Translates points limits into finish positions (e.g. *"Leader must average P4 or worse"*).
-   - Generates a **Rival Contenders Threshold Matrix** detailing point buffers and finish restrictions for every driver.
-3. **Interactive Race-by-Race Simulator**:
-   - Complete remaining race calendar including Sprint weekends.
-   - Set custom finishes (P1 to P10, DNF, Fastest Lap) for selected driver and leader.
-   - 1-Click Presets: *Clean Sweep*, *Leader DNF*, *Leader P2 Squeeze*, *Reset*.
-   - Live Projected Standings identifying the exact race round where the title is clinched.
+2. **Comprehensive Multi-Contender Permutations Engine**:
+   - Rather than only checking the leader, evaluates **every active contender** simultaneously.
+   - Calculates the **Points Buffer** and **Maximum Permissible Total Points** for all rivals to prevent any rival from overtaking the target driver.
+   - Translates points limits into exact finish position constraints (e.g. *"Can finish at most P3 average"*, *"Must finish P5 or lower"*, *"Must score 0 points"*).
+   - Identifies the **Primary Title Threat** (the contender with the smallest points margin).
+   - Models **Pack Cannibalism & Points Sharing**: Demonstrates how rivals trading P2, P3, and P4 finishes prevents any single driver from hoarding points and allows the target driver to clinch!
+3. **Interactive Multi-Car Race-by-Race Simulator**:
+   - Assign custom finishes (P1 through P10, DNF, Fastest Lap) for **all top contenders** across every remaining Grand Prix and Sprint.
+   - 1-Click Multi-Car Presets:
+     - 🚀 *Clean Sweep (Rivals Share Podiums)*: Selected driver wins, rivals alternate P2/P3/P4 so points are divided.
+     - 🥈 *Threat Monopolizes P2*: Tests the worst-case scenario where the #1 threat rival takes P2 in every race.
+     - 💥 *Top Contenders DNF / Chaos*: High-attrition race where top rivals crash out.
+     - ↺ *Reset Natural Order*.
+   - Live **Projected Leaderboard** showing the final top 5 standings, deltas, and clinching round.
 4. **Authentic Formula 1 Design**:
    - Official F1 red accents (`#E10600`), carbon weave textures, aerodynamic curves.
    - Official team livery styling for all teams (McLaren, Ferrari, Red Bull, Mercedes, Aston Martin, Alpine, Williams, Haas, Audi, RB, Cadillac).

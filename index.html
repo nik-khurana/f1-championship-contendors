@@ -178,8 +178,8 @@
           <div class="scenarios-container">
             <div class="section-head">
               <div>
-                <h3>📋 Path to the Crown: Rival Permutations</h3>
-                <p class="section-tagline">What must happen with the current leader and other contenders for this driver to win</p>
+                <h3>📋 Multi-Contender Championship Permutations</h3>
+                <p class="section-tagline">Comprehensive requirements: all finishing positions and points limits every contender must satisfy for this driver to win</p>
               </div>
             </div>
 
@@ -191,16 +191,18 @@
             <!-- Rivals Elimination Threshold Table -->
             <div class="rivals-table-box">
               <h4 style="font-family: var(--font-racing); font-size: 1.15rem; margin-bottom: 0.75rem; text-transform: uppercase;">
-                🎯 Rival Contenders Threshold Matrix
+                🎯 All Active Contenders: Finishing Caps & Elimination Rules
               </h4>
               <table class="rivals-table" id="rivalsTable">
                 <thead>
                   <tr>
                     <th>Contender</th>
                     <th>Current Points</th>
-                    <th>Max Allowed Points</th>
-                    <th>Finishing Restriction</th>
-                    <th>Status vs Selected Driver</th>
+                    <th>Max Allowed Total</th>
+                    <th>Points Buffer</th>
+                    <th>Required Finish / Scoring Cap</th>
+                    <th>Max Wins</th>
+                    <th>Threat Level</th>
                   </tr>
                 </thead>
                 <tbody id="rivalsTableBody">
@@ -216,8 +218,8 @@
           <div class="simulator-container">
             <div class="section-head">
               <div>
-                <h3>🧪 Race-by-Race What-If Permutations</h3>
-                <p class="section-tagline">Set custom finishes for the selected driver and the championship leader for every remaining race</p>
+                <h3>🧪 Race-by-Race Multi-Car What-If Simulator</h3>
+                <p class="section-tagline">Assign custom finishing positions across the entire top contender field for every remaining Grand Prix</p>
               </div>
             </div>
 
@@ -225,28 +227,31 @@
             <div class="quick-sim-presets">
               <span style="font-size:0.8rem; font-weight:700; color:var(--f1-gray-400); align-self:center;">PRESETS:</span>
               <button class="btn-preset primary" id="btnPresetSweep">
-                🚀 Clean Sweep (Selected Wins All)
-              </button>
-              <button class="btn-preset" id="btnPresetDnf">
-                💥 Leader Nightmare (DNFs / 0 Pts)
+                🚀 Clean Sweep (Rivals Share Podiums)
               </button>
               <button class="btn-preset" id="btnPresetP1P2">
-                🥈 Leader P2 Squeeze (Driver P1, Leader P2)
+                🥈 Threat Monopolizes P2
+              </button>
+              <button class="btn-preset" id="btnPresetDnf">
+                💥 Top Contenders DNF / Chaos
               </button>
               <button class="btn-preset" id="btnPresetReset">
-                ↺ Reset Default
+                ↺ Reset Natural Order
               </button>
             </div>
 
             <!-- Projected Outcome Banner -->
             <div class="projected-summary-bar" id="projectedSummaryBar">
-              <div>
+              <div style="flex: 1;">
                 <div class="summary-lead-text" id="projectedOutcomeLead">
                   🏆 PROJECTED CHAMPION: Calculating...
                 </div>
                 <div style="font-size: 0.85rem; color: var(--f1-gray-100); margin-top: 4px;" id="projectedOutcomeSub">
                   Simulating championship permutations based on assigned finishes...
                 </div>
+              </div>
+              <div id="projectedLeaderboard" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <!-- Populated via app.js -->
               </div>
             </div>
 

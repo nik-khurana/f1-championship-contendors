@@ -1,5 +1,5 @@
 /**
- * Formula 1 Championship Permutations & Clinch Calculator Engine
+ * Formula 1 Championship Permutations & Multi-Contender Clinch Calculator Engine
  */
 
 export const F1_POINTS = {
@@ -53,8 +53,7 @@ export class ChampionshipCalculator {
       } else if (maxPossiblePoints < leaderPoints) {
         status = 'eliminated';
       } else if (maxPossiblePoints === leaderPoints) {
-        // Tie possible on countback
-        status = 'contender';
+        status = 'contender'; // Tie possible on countback
       } else {
         status = isSeasonClinched ? 'eliminated' : 'contender';
       }
@@ -71,7 +70,44 @@ export class ChampionshipCalculator {
   }
 
   /**
-   * Computes deep mathematical scenario permutations for a specific driver
+   * Helper translating permissible average points to human-readable finishing position constraint
+   */
+  getFinishPositionDescription(avgPts, maxPtsTotal, remainingCount) {
+    if (maxPtsTotal <= 0) {
+      return 'Must score 0 points (DNFs / finish P11 or lower in every race)';
+    }
+    if (avgPts >= 18) {
+      return 'Can afford P2 in every remaining Grand Prix';
+    }
+    if (avgPts >= 15) {
+      return 'Can average a podium finish (P3 or lower)';
+    }
+    if (avgPts >= 12) {
+      return 'Must average P4 or worse (cannot regularly finish on podium)';
+    }
+    if (avgPts >= 10) {
+      return 'Must average P5 or worse';
+    }
+    if (avgPts >= 8) {
+      return 'Must average P6 or worse';
+    }
+    if (avgPts >= 6) {
+      return 'Must average P7 or worse';
+    }
+    if (avgPts >= 4) {
+      return 'Must average P8 or worse';
+    }
+    if (avgPts >= 2) {
+      return 'Must average P9 or worse';
+    }
+    if (avgPts >= 1) {
+      return 'Can only score single points (P10 average)';
+    }
+    return `Can score at most ${maxPtsTotal} points total across all ${remainingCount} remaining races`;
+  }
+
+  /**
+   * Computes comprehensive multi-contender mathematical scenarios for a specific target driver
    */
   calculateDriverScenarios(targetDriverId) {
     const evaluatedDrivers = this.evaluateAllDrivers();
@@ -85,63 +121,91 @@ export class ChampionshipCalculator {
     const targetMaxPoints = target.points + this.totalRemainingPoints;
     const targetMaxWins = target.wins + remainingCount;
 
-    // What leader can score before target driver cannot win:
-    // If target scores targetMaxPoints:
-    // Leader's maximum allowed points to finish behind target
-    const maxLeaderAllowedPoints = targetMaxPoints - 1; // 1 point buffer to guarantee win
-    const pointsLeaderCanScore = Math.max(0, maxLeaderAllowedPoints - leader.points);
-    const avgPtsPerRaceLeaderAllowed = remainingCount > 0 ? (pointsLeaderCanScore / remainingCount) : 0;
+    // Identify all other drivers who are mathematically in contention
+    const allContenders = evaluatedDrivers.filter(d => 
+      d.driver.driverId !== target.driver.driverId && d.canWin
+    );
 
-    // Map average points to typical finishing position
-    const getFinishPositionDescription = (avgPts) => {
-      if (avgPts >= 18) return 'Leader can afford 2nd place in every race';
-      if (avgPts >= 15) return 'Leader can finish on the podium (3rd place average)';
-      if (avgPts >= 12) return 'Leader must finish 4th or lower on average';
-      if (avgPts >= 10) return 'Leader must finish 5th or lower on average';
-      if (avgPts >= 8)  return 'Leader must finish 6th or lower on average';
-      if (avgPts >= 6)  return 'Leader must finish 7th or lower on average';
-      if (avgPts >= 4)  return 'Leader must finish 8th or lower on average';
-      if (avgPts >= 2)  return 'Leader must finish 9th or lower on average';
-      if (avgPts > 0)   return 'Leader can only score minor points (10th place average)';
-      return 'Leader must score 0 points (DNFs / outside top 10)';
-    };
+    // For EACH rival contender in contention:
+    // Determine the maximum points they can score before surpassing the target driver
+    const rivalRequirements = allContenders.map(rival => {
+      // For target to guarantee winning (or tie with win countback):
+      // If rival reaches targetMaxPoints, rival could tie or beat target.
+      // Target wins if targetMaxPoints > rival.finalPoints OR (equal and target has more wins)
+      const maxAllowedPointsTotal = targetMaxPoints - 1;
+      const maxAdditionalPointsAllowed = Math.max(0, maxAllowedPointsTotal - rival.points);
+      const avgPtsPerRaceAllowed = remainingCount > 0 ? (maxAdditionalPointsAllowed / remainingCount) : 0;
 
-    // Calculate rivals matrix (top contenders who threaten this target driver)
-    const rivals = evaluatedDrivers
-      .filter(d => d.driver.driverId !== target.driver.driverId && d.status !== 'eliminated')
-      .map(rival => {
-        // Maximum points this rival is allowed to score before surpassing target's best case
-        const maxRivalAllowed = targetMaxPoints - 1;
-        const rivalCanScore = Math.max(0, maxRivalAllowed - rival.points);
-        const rivalAvgAllowed = remainingCount > 0 ? (rivalCanScore / remainingCount) : 0;
-        
-        return {
-          driver: rival.driver,
-          position: rival.position,
-          currentPoints: rival.points,
-          maxAllowedPoints: maxRivalAllowed,
-          pointsBuffer: rivalCanScore,
-          maxFinishAllowed: getFinishPositionDescription(rivalAvgAllowed),
-          mustFinishBehind: rival.points > target.points
-        };
-      });
+      // Maximum wins this rival could take before taking too many points
+      const maxWinsAllowed = Math.min(remainingCount, Math.floor(maxAdditionalPointsAllowed / 25));
+      // Maximum podiums this rival could take (15 pts min per podium)
+      const maxPodiumsAllowed = Math.min(remainingCount, Math.floor(maxAdditionalPointsAllowed / 15));
+
+      // Finishing position rule
+      const finishConstraint = this.getFinishPositionDescription(
+        avgPtsPerRaceAllowed, 
+        maxAdditionalPointsAllowed, 
+        remainingCount
+      );
+
+      // Threat severity: how close this rival already is to target's max points
+      const pointsBuffer = maxAdditionalPointsAllowed;
+      const isAheadOfTarget = rival.points > target.points;
+      const pointsAheadOfTarget = isAheadOfTarget ? (rival.points - target.points) : 0;
+      const pointsBehindTarget = !isAheadOfTarget ? (target.points - rival.points) : 0;
+
+      return {
+        driver: rival.driver,
+        constructors: rival.constructors,
+        position: rival.position,
+        currentPoints: rival.points,
+        currentWins: rival.wins,
+        isAheadOfTarget,
+        pointsAheadOfTarget,
+        pointsBehindTarget,
+        maxAllowedPointsTotal,
+        maxAdditionalPointsAllowed,
+        avgPtsPerRaceAllowed: avgPtsPerRaceAllowed.toFixed(1),
+        maxWinsAllowed,
+        maxPodiumsAllowed,
+        finishConstraint,
+        threatLevel: pointsBuffer < 50 ? 'CRITICAL' : (pointsBuffer < 100 ? 'HIGH' : 'MODERATE')
+      };
+    }).sort((a, b) => a.maxAdditionalPointsAllowed - b.maxAdditionalPointsAllowed); // Sort by lowest buffer (biggest threat first)
+
+    // Primary mathematical threat: the contender who gives target the smallest margin of error
+    const primaryThreat = rivalRequirements[0] || null;
+
+    // Multi-Car Podiums Distribution Analysis:
+    // If target driver finishes P1 in every race, who can take P2, P3, P4, P5?
+    // In each standard race, P2=18, P3=15, P4=12, P5=10.
+    // If the top 2 rivals split P2 and P3:
+    const rivalsP2P3Split = rivalRequirements.slice(0, 4).map(r => {
+      // Half P2 (18) and half P3 (15) average = 16.5 pts per race
+      const projectedScoreIfP2P3 = r.currentPoints + (remainingCount * 16.5);
+      const canSurviveP2P3 = projectedScoreIfP2P3 < targetMaxPoints;
+      return {
+        driver: r.driver,
+        projectedScore: Math.round(projectedScoreIfP2P3),
+        canSurviveP2P3,
+        margin: Math.round(targetMaxPoints - projectedScoreIfP2P3)
+      };
+    });
 
     // Clinch requirements for the target driver:
-    // Earliest round they could clinch if they win every remaining round and nearest rival scores minimum
     let earliestClinchRound = null;
     let runningTargetPoints = target.points;
-    let runningP2Points = isTargetLeader ? (evaluatedDrivers[1]?.points || 0) : leader.points;
+    let runningHighestRivalPoints = allContenders[0]?.points || leader.points;
 
     for (let i = 0; i < this.remainingRaces.length; i++) {
       const race = this.remainingRaces[i];
       const maxRacePts = race.hasSprint ? F1_POINTS.MAX_RACE_WEEKEND_SPRINT : F1_POINTS.MAX_RACE_WEEKEND_STANDARD;
       runningTargetPoints += maxRacePts;
-      // In best case scenario, rival finishes P2 (18 pts + 7 sprint) or P3 or DNF
-      // Let's test clinching if rival scores conservative P3 (15 pts) vs DNF (0 pts)
+      
       const remainingAfterRound = this.remainingRaces.slice(i + 1).reduce((acc, r) => 
         acc + (r.hasSprint ? F1_POINTS.MAX_RACE_WEEKEND_SPRINT : F1_POINTS.MAX_RACE_WEEKEND_STANDARD), 0);
 
-      if ((runningTargetPoints - runningP2Points) > remainingAfterRound && !earliestClinchRound) {
+      if ((runningTargetPoints - runningHighestRivalPoints) > remainingAfterRound && !earliestClinchRound) {
         earliestClinchRound = {
           round: race.round,
           raceName: race.raceName,
@@ -160,10 +224,10 @@ export class ChampionshipCalculator {
       remainingSprints,
       targetMaxPoints,
       targetMaxWins,
-      pointsLeaderCanScore,
-      avgPtsPerRaceLeaderAllowed: avgPtsPerRaceLeaderAllowed.toFixed(1),
-      leaderFinishVerdict: getFinishPositionDescription(avgPtsPerRaceLeaderAllowed),
-      rivals,
+      allContendersCount: allContenders.length,
+      rivalRequirements,
+      primaryThreat,
+      rivalsP2P3Split,
       earliestClinchRound
     };
   }

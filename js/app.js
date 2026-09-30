@@ -1,5 +1,5 @@
 /**
- * Formula 1 Championship Permutations & Contenders UI Controller
+ * Formula 1 Championship Permutations & Multi-Contender UI Controller
  */
 import { f1Api, FALLBACK_DATA_2026 } from './api.js';
 import { ChampionshipCalculator } from './calculator.js';
@@ -249,7 +249,7 @@ class F1ChampionshipApp {
   }
 
   /**
-   * Detailed Permutations & Mathematical Path to Crown
+   * Detailed Comprehensive Multi-Contender Permutations
    */
   renderScenariosView() {
     const scenarios = this.calculator.calculateDriverScenarios(this.selectedDriverId);
@@ -297,7 +297,7 @@ class F1ChampionshipApp {
       } else if (target.canWin) {
         verdictEl.className = 'verdict-badge can-win';
         verdictEl.innerHTML = `⚡ CAN STILL WIN CHAMPIONSHIP`;
-        verdictSub.textContent = `Mathematical contender for the ${this.standingsData[0].season || '2026'} World Title!`;
+        verdictSub.textContent = `Mathematical contender among ${scenarios.allContendersCount + 1} active drivers!`;
       } else {
         verdictEl.className = 'verdict-badge eliminated';
         verdictEl.innerHTML = `❌ MATHEMATICALLY ELIMINATED`;
@@ -310,7 +310,7 @@ class F1ChampionshipApp {
       
       const gapEl = document.getElementById('metricGap');
       if (target.deficitToLeader === 0) {
-        gapEl.textContent = 'CHAMPION';
+        gapEl.textContent = 'LEADER';
         gapEl.className = 'metric-value highlight-green';
       } else {
         gapEl.textContent = `-${target.deficitToLeader}`;
@@ -319,7 +319,7 @@ class F1ChampionshipApp {
 
       document.getElementById('metricAvailPts').textContent = scenarios.totalRemainingPoints;
 
-      // Progress bar (Points / (Leader Points + Total Remaining))
+      // Progress bar
       const totalCeiling = leader.points + scenarios.totalRemainingPoints;
       const pct = Math.min(100, Math.round((target.maxPossiblePoints / totalCeiling) * 100));
       const fillBar = document.getElementById('clinchProgressBarFill');
@@ -335,105 +335,85 @@ class F1ChampionshipApp {
     if (!target.canWin) {
       conditionsContainer.innerHTML = `
         <div class="info-callout warning" style="grid-column: 1 / -1;">
-          <strong>Mathematical Elimination:</strong> Even if ${target.driver.givenName} ${target.driver.familyName} wins all ${scenarios.remainingCount} remaining races, sprints, and fastest laps (+${scenarios.totalRemainingPoints} pts), their ceiling is ${target.maxPossiblePoints} pts, which cannot reach ${leader.driver.givenName} ${leader.driver.familyName}'s current total of ${leader.points} pts.
+          <strong>Mathematical Elimination:</strong> Even if ${target.driver.givenName} ${target.driver.familyName} wins all ${scenarios.remainingCount} remaining races, sprints, and fastest laps (+${scenarios.totalRemainingPoints} pts), their ceiling is ${target.maxPossiblePoints} pts, which cannot surpass ${leader.driver.givenName} ${leader.driver.familyName}'s current total of ${leader.points} pts.
         </div>
       `;
       document.getElementById('rivalsTableBody').innerHTML = `
-        <tr><td colspan="5" style="text-align:center; color: var(--f1-gray-400); padding: 2rem;">
+        <tr><td colspan="7" style="text-align:center; color: var(--f1-gray-400); padding: 2rem;">
           Driver is eliminated from title contention for this season.
         </td></tr>
       `;
       return;
     }
 
-    if (scenarios.isTargetLeader) {
-      // Selected driver IS the leader!
-      conditionsContainer.innerHTML = `
-        <div class="scenario-card" style="--scenario-color: var(--f1-gold);">
-          <div class="scenario-card-title">
-            <span>Crown Defense Objective</span>
-            <span class="scenario-target-badge">P1 LEADER</span>
-          </div>
-          <div class="scenario-card-desc">
-            ${target.driver.familyName} currently leads the championship by <strong>${target.points - (this.standingsData[1]?.points || 0)} points</strong> over ${this.standingsData[1]?.Driver.familyName}.
-          </div>
-        </div>
+    const primaryThreat = scenarios.primaryThreat;
 
-        <div class="scenario-card" style="--scenario-color: var(--f1-neon-green);">
-          <div class="scenario-card-title">
-            <span>Clinch Threshold</span>
-            <span class="scenario-target-badge">+${scenarios.totalRemainingPoints} PTS REMAINING</span>
-          </div>
-          <div class="scenario-card-desc">
-            To clinch without relying on rival results, ${target.driver.familyName} needs <strong>${Math.max(0, (this.standingsData[1]?.points || 0) + scenarios.totalRemainingPoints - target.points + 1)} more points</strong>.
-          </div>
+    // Multi-Contender scenario condition cards
+    conditionsContainer.innerHTML = `
+      <!-- Card 1: Critical Threat -->
+      <div class="scenario-card" style="--scenario-color: var(--f1-red);">
+        <div class="scenario-card-title">
+          <span>Primary Title Threat</span>
+          <span class="scenario-target-badge" style="background:rgba(225,6,0,0.2); color:#FF5252;">
+            ${primaryThreat ? `${primaryThreat.driver.code || primaryThreat.driver.familyName}` : 'P1 LEADER'}
+          </span>
         </div>
+        <div class="scenario-card-desc">
+          ${primaryThreat ? `
+            <strong>${primaryThreat.driver.givenName} ${primaryThreat.driver.familyName}</strong> poses the smallest margin of error. 
+            Can score at most <strong>${primaryThreat.maxAdditionalPointsAllowed} more points</strong> (Max Total: ${primaryThreat.maxAllowedPointsTotal} pts). 
+            <em>${primaryThreat.finishConstraint}.</em>
+          ` : 'No rivals currently pose an elimination threat.'}
+        </div>
+      </div>
 
-        <div class="scenario-card" style="--scenario-color: var(--f1-cyan);">
-          <div class="scenario-card-title">
-            <span>Earliest Clinch Round</span>
-            <span class="scenario-target-badge">${scenarios.earliestClinchRound ? `ROUND ${scenarios.earliestClinchRound.round}` : 'SEASON FINALE'}</span>
-          </div>
-          <div class="scenario-card-desc">
-            ${scenarios.earliestClinchRound ? 
-              `Title can be clinched as early as the <strong>${scenarios.earliestClinchRound.raceName}</strong> if maximum points are achieved and rivals drop points.` : 
-              'The championship battle is projected to go all the way down to the wire in Abu Dhabi!'}
-          </div>
+      <!-- Card 2: Pack Cannibalism & Points Sharing -->
+      <div class="scenario-card" style="--scenario-color: var(--f1-cyan);">
+        <div class="scenario-card-title">
+          <span>Podium Points-Sharing Rule</span>
+          <span class="scenario-target-badge">P2 / P3 / P4 PACK</span>
         </div>
-      `;
-    } else {
-      // Selected driver is chasing the leader!
-      conditionsContainer.innerHTML = `
-        <div class="scenario-card" style="--scenario-color: var(--f1-neon-green);">
-          <div class="scenario-card-title">
-            <span>Maximum Driver Ceiling</span>
-            <span class="scenario-target-badge">${scenarios.targetMaxPoints} PTS</span>
-          </div>
-          <div class="scenario-card-desc">
-            If ${target.driver.familyName} achieves a clean sweep (wins all ${scenarios.remainingCount} remaining races + ${scenarios.remainingSprints} sprints + fastest laps), they will finish with <strong>${scenarios.targetMaxPoints} points</strong>.
-          </div>
+        <div class="scenario-card-desc">
+          Because only <strong>one rival can finish P2 (18 pts)</strong> per race, ${target.driver.familyName} does NOT need all rivals to DNF! 
+          If rivals trade 2nd, 3rd, and 4th places across the remaining ${scenarios.remainingCount} rounds, none will score enough points to challenge ${target.driver.familyName}'s ${scenarios.targetMaxPoints} pts ceiling.
         </div>
+      </div>
 
-        <div class="scenario-card" style="--scenario-color: var(--f1-red);">
-          <div class="scenario-card-title">
-            <span>Leader Limit (${leader.driver.familyName})</span>
-            <span class="scenario-target-badge">MAX ${scenarios.pointsLeaderCanScore} PTS</span>
-          </div>
-          <div class="scenario-card-desc">
-            For ${target.driver.familyName} to take the crown, ${leader.driver.familyName} can score <strong>at most ${scenarios.pointsLeaderCanScore} points</strong> out of ${scenarios.totalRemainingPoints} available.
-          </div>
+      <!-- Card 3: Target Max Ceiling -->
+      <div class="scenario-card" style="--scenario-color: var(--f1-neon-green);">
+        <div class="scenario-card-title">
+          <span>${target.driver.familyName}'s Maximum Reach</span>
+          <span class="scenario-target-badge">${scenarios.targetMaxPoints} PTS CEILING</span>
         </div>
-
-        <div class="scenario-card" style="--scenario-color: var(--f1-neon-yellow);">
-          <div class="scenario-card-title">
-            <span>Leader Finishing Requirement</span>
-            <span class="scenario-target-badge">${scenarios.avgPtsPerRaceLeaderAllowed} PTS / RACE</span>
-          </div>
-          <div class="scenario-card-desc">
-            ${scenarios.leaderFinishVerdict}. Any higher average finish by ${leader.driver.familyName} seals their championship defense.
-          </div>
+        <div class="scenario-card-desc">
+          Winning all ${scenarios.remainingCount} remaining GPs and ${scenarios.remainingSprints} sprints brings ${target.driver.familyName} to <strong>${scenarios.targetMaxPoints} points</strong> and <strong>${scenarios.targetMaxWins} wins</strong>, virtually guaranteeing victory on countback ties.
         </div>
-      `;
-    }
+      </div>
+    `;
 
-    // Render Rivals Elimination Threshold Table
+    // Render All Active Contenders Table
     const tableBody = document.getElementById('rivalsTableBody');
     if (!tableBody) return;
 
-    tableBody.innerHTML = scenarios.rivals.map(rival => {
-      const rivalSlug = this.getTeamSlug(rival.driver.Constructors?.[0] || rival.constructors?.[0]);
+    tableBody.innerHTML = scenarios.rivalRequirements.map(rival => {
+      const threatColor = rival.threatLevel === 'CRITICAL' ? '#FF5252' : (rival.threatLevel === 'HIGH' ? '#FFA726' : '#66BB6A');
       return `
         <tr>
           <td>
-            <strong>P${rival.position}</strong> ${rival.driver.givenName} ${rival.driver.familyName} (${rival.driver.code || ''})
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="team-indicator-dot" style="background:var(--team-${this.getTeamSlug(rival.constructors?.[0])}, #FFF);"></span>
+              <strong>P${rival.position}</strong> ${rival.driver.givenName} ${rival.driver.familyName} (${rival.driver.code || ''})
+            </div>
           </td>
-          <td>${rival.currentPoints} pts</td>
-          <td><span class="tab-badge" style="color:var(--f1-neon-yellow);">${rival.pointsBuffer} pts</span></td>
-          <td>${rival.maxFinishAllowed}</td>
+          <td><strong>${rival.currentPoints}</strong> pts</td>
+          <td><span class="tab-badge" style="color:var(--f1-neon-yellow);">${rival.maxAllowedPointsTotal} pts</span></td>
+          <td><span style="color:#FFF; font-weight:700;">+${rival.maxAdditionalPointsAllowed} pts</span></td>
+          <td>${rival.finishConstraint}</td>
+          <td>Max ${rival.maxWinsAllowed} wins</td>
           <td>
-            ${rival.pointsBuffer <= 0 ? 
-              '<span class="driver-status-badge eliminated">Blocked</span>' : 
-              '<span class="driver-status-badge contender">Active Threat</span>'}
+            <span class="driver-status-badge" style="background: ${threatColor}22; color: ${threatColor}; border: 1px solid ${threatColor}66;">
+              ${rival.threatLevel}
+            </span>
           </td>
         </tr>
       `;
@@ -441,45 +421,88 @@ class F1ChampionshipApp {
   }
 
   /**
-   * Interactive What-If Permutations Race-by-Race Simulator
+   * Interactive What-If Permutations Race-by-Race Multi-Contender Simulator
    */
   renderSimulatorView() {
     const container = document.getElementById('raceCardsContainer');
     if (!container) return;
 
     container.innerHTML = '';
-    const leader = this.standingsData[0];
-    const target = this.standingsData.find(s => s.Driver.driverId === this.selectedDriverId) || leader;
+    const target = this.standingsData.find(s => s.Driver.driverId === this.selectedDriverId) || this.standingsData[0];
+    // Get top 4 active contenders (including leader and nearest rivals)
+    const topContenders = this.standingsData.slice(0, 5);
 
     // Presets actions
     const btnSweep = document.getElementById('btnPresetSweep');
-    const btnDnf = document.getElementById('btnPresetDnf');
     const btnP1P2 = document.getElementById('btnPresetP1P2');
+    const btnDnf = document.getElementById('btnPresetDnf');
     const btnReset = document.getElementById('btnPresetReset');
 
     btnSweep.onclick = () => {
-      this.simulator.applyPreset('sweep', target.Driver.driverId, leader.Driver.driverId);
-      this.renderSimulatorView();
-    };
-    btnDnf.onclick = () => {
-      this.simulator.applyPreset('leader_dnf', target.Driver.driverId, leader.Driver.driverId);
+      this.simulator.applyPreset('sweep_distributed', target.Driver.driverId, topContenders);
       this.renderSimulatorView();
     };
     btnP1P2.onclick = () => {
-      this.simulator.applyPreset('p1_p2', target.Driver.driverId, leader.Driver.driverId);
+      this.simulator.applyPreset('rival_threat_p2', target.Driver.driverId, topContenders);
+      this.renderSimulatorView();
+    };
+    btnDnf.onclick = () => {
+      this.simulator.applyPreset('leader_dnf_chaos', target.Driver.driverId, topContenders);
       this.renderSimulatorView();
     };
     btnReset.onclick = () => {
-      this.simulator.applyPreset('reset', target.Driver.driverId, leader.Driver.driverId);
+      this.simulator.applyPreset('reset', target.Driver.driverId, topContenders);
       this.renderSimulatorView();
     };
 
-    // Render individual remaining race cards
+    // Render individual remaining race cards with multi-driver selectors
     this.racesData.forEach(race => {
-      const pred = this.simulator.predictions[race.round] || { targetPos: 1, leaderPos: 2, targetFL: false };
+      const pred = this.simulator.predictions[race.round] || { driverPositions: {}, fastestLapDriverId: null };
 
       const card = document.createElement('div');
       card.className = 'race-round-card';
+
+      // Build driver finish controls
+      let driversControlsHtml = '';
+      
+      // Target driver row first
+      const targetPos = pred.driverPositions[target.Driver.driverId] || 1;
+      const isTargetFL = pred.fastestLapDriverId === target.Driver.driverId;
+
+      driversControlsHtml += `
+        <div class="race-prediction-control" style="border-left: 3px solid var(--f1-neon-green);">
+          <div class="control-label-row">
+            <span style="color:#FFF; font-weight:700;">★ ${target.Driver.code || target.Driver.familyName} (Selected)</span>
+            <button class="fl-toggle-btn ${isTargetFL ? 'active' : ''}" data-round="${race.round}" data-driver="${target.Driver.driverId}">
+              ⏱ +1 FL
+            </button>
+          </div>
+          <div class="prediction-select-row">
+            <select class="pos-select driver-pos-select" data-round="${race.round}" data-driver="${target.Driver.driverId}">
+              ${this.renderPosOptions(targetPos)}
+            </select>
+          </div>
+        </div>
+      `;
+
+      // Top rivals rows
+      topContenders.filter(c => c.Driver.driverId !== target.Driver.driverId).slice(0, 3).forEach(rival => {
+        const rPos = pred.driverPositions[rival.Driver.driverId] || 2;
+        const teamSlug = this.getTeamSlug(rival.Constructors?.[0]);
+        driversControlsHtml += `
+          <div class="race-prediction-control" style="border-left: 3px solid var(--team-${teamSlug}, rgba(255,255,255,0.2)); margin-top: 6px;">
+            <div class="control-label-row">
+              <span>P${rival.position} ${rival.Driver.code || rival.Driver.familyName}</span>
+            </div>
+            <div class="prediction-select-row">
+              <select class="pos-select driver-pos-select" data-round="${race.round}" data-driver="${rival.Driver.driverId}">
+                ${this.renderPosOptions(rPos)}
+              </select>
+            </div>
+          </div>
+        `;
+      });
+
       card.innerHTML = `
         <div class="round-header-row">
           <span class="round-pill">ROUND ${race.round}</span>
@@ -489,73 +512,29 @@ class F1ChampionshipApp {
           <div class="race-name-text">${race.flag} ${race.raceName}</div>
           <div class="race-meta-text">${race.circuitName} • ${race.date}</div>
         </div>
-
-        <div class="race-prediction-control">
-          <div class="control-label-row">
-            <span>${target.Driver.code || target.Driver.familyName} (Selected)</span>
-            <button class="fl-toggle-btn ${pred.targetFL ? 'active' : ''}" data-round="${race.round}">
-              ⏱ +1 FL
-            </button>
-          </div>
-          <div class="prediction-select-row">
-            <select class="pos-select target-pos-select" data-round="${race.round}">
-              <option value="1" ${pred.targetPos == 1 ? 'selected' : ''}>P1 (25 pts)</option>
-              <option value="2" ${pred.targetPos == 2 ? 'selected' : ''}>P2 (18 pts)</option>
-              <option value="3" ${pred.targetPos == 3 ? 'selected' : ''}>P3 (15 pts)</option>
-              <option value="4" ${pred.targetPos == 4 ? 'selected' : ''}>P4 (12 pts)</option>
-              <option value="5" ${pred.targetPos == 5 ? 'selected' : ''}>P5 (10 pts)</option>
-              <option value="6" ${pred.targetPos == 6 ? 'selected' : ''}>P6 (8 pts)</option>
-              <option value="7" ${pred.targetPos == 7 ? 'selected' : ''}>P7 (6 pts)</option>
-              <option value="8" ${pred.targetPos == 8 ? 'selected' : ''}>P8 (4 pts)</option>
-              <option value="9" ${pred.targetPos == 9 ? 'selected' : ''}>P9 (2 pts)</option>
-              <option value="10" ${pred.targetPos == 10 ? 'selected' : ''}>P10 (1 pt)</option>
-              <option value="DNF" ${pred.targetPos === 'DNF' ? 'selected' : ''}>DNF / 0 pts</option>
-            </select>
-          </div>
+        <div class="race-controls-wrap" style="margin-top: 6px;">
+          ${driversControlsHtml}
         </div>
-
-        ${target.Driver.driverId !== leader.Driver.driverId ? `
-          <div class="race-prediction-control">
-            <div class="control-label-row">
-              <span>${leader.Driver.code || leader.Driver.familyName} (Leader)</span>
-            </div>
-            <div class="prediction-select-row">
-              <select class="pos-select leader-pos-select" data-round="${race.round}">
-                <option value="1" ${pred.leaderPos == 1 ? 'selected' : ''}>P1 (25 pts)</option>
-                <option value="2" ${pred.leaderPos == 2 ? 'selected' : ''}>P2 (18 pts)</option>
-                <option value="3" ${pred.leaderPos == 3 ? 'selected' : ''}>P3 (15 pts)</option>
-                <option value="4" ${pred.leaderPos == 4 ? 'selected' : ''}>P4 (12 pts)</option>
-                <option value="5" ${pred.leaderPos == 5 ? 'selected' : ''}>P5 (10 pts)</option>
-                <option value="6" ${pred.leaderPos == 6 ? 'selected' : ''}>P6 (8 pts)</option>
-                <option value="7" ${pred.leaderPos == 7 ? 'selected' : ''}>P7 (6 pts)</option>
-                <option value="8" ${pred.leaderPos == 8 ? 'selected' : ''}>P8 (4 pts)</option>
-                <option value="9" ${pred.leaderPos == 9 ? 'selected' : ''}>P9 (2 pts)</option>
-                <option value="10" ${pred.leaderPos == 10 ? 'selected' : ''}>P10 (1 pt)</option>
-                <option value="DNF" ${pred.leaderPos === 'DNF' ? 'selected' : ''}>DNF / 0 pts</option>
-              </select>
-            </div>
-          </div>
-        ` : ''}
       `;
 
       // Event listeners for select changes
-      const targetSelect = card.querySelector('.target-pos-select');
-      targetSelect?.addEventListener('change', (e) => {
-        this.simulator.setRacePrediction(race.round, 'targetPos', e.target.value);
-        this.updateProjectedStandingsUI();
-      });
-
-      const leaderSelect = card.querySelector('.leader-pos-select');
-      leaderSelect?.addEventListener('change', (e) => {
-        this.simulator.setRacePrediction(race.round, 'leaderPos', e.target.value);
-        this.updateProjectedStandingsUI();
+      card.querySelectorAll('.driver-pos-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+          const round = e.target.dataset.round;
+          const driverId = e.target.dataset.driver;
+          this.simulator.setDriverRacePosition(round, driverId, e.target.value);
+          this.updateProjectedStandingsUI();
+        });
       });
 
       const flBtn = card.querySelector('.fl-toggle-btn');
       flBtn?.addEventListener('click', () => {
-        pred.targetFL = !pred.targetFL;
-        this.simulator.setRacePrediction(race.round, 'targetFL', pred.targetFL);
-        flBtn.classList.toggle('active', pred.targetFL);
+        const round = flBtn.dataset.round;
+        const driverId = flBtn.dataset.driver;
+        const currentFL = pred.fastestLapDriverId === driverId;
+        const newFL = currentFL ? null : driverId;
+        this.simulator.setFastestLapDriver(round, newFL);
+        flBtn.classList.toggle('active', !currentFL);
         this.updateProjectedStandingsUI();
       });
 
@@ -565,27 +544,57 @@ class F1ChampionshipApp {
     this.updateProjectedStandingsUI();
   }
 
-  updateProjectedStandingsUI() {
-    const leader = this.standingsData[0];
-    const target = this.standingsData.find(s => s.Driver.driverId === this.selectedDriverId) || leader;
+  renderPosOptions(selectedVal) {
+    const positions = [
+      { val: '1', label: 'P1 (25 pts)' },
+      { val: '2', label: 'P2 (18 pts)' },
+      { val: '3', label: 'P3 (15 pts)' },
+      { val: '4', label: 'P4 (12 pts)' },
+      { val: '5', label: 'P5 (10 pts)' },
+      { val: '6', label: 'P6 (8 pts)' },
+      { val: '7', label: 'P7 (6 pts)' },
+      { val: '8', label: 'P8 (4 pts)' },
+      { val: '9', label: 'P9 (2 pts)' },
+      { val: '10', label: 'P10 (1 pt)' },
+      { val: 'DNF', label: 'DNF / 0 pts' }
+    ];
+    return positions.map(p => 
+      `<option value="${p.val}" ${String(selectedVal) === p.val ? 'selected' : ''}>${p.label}</option>`
+    ).join('');
+  }
 
-    const result = this.simulator.computeProjectedStandings(target.Driver.driverId, leader.Driver.driverId);
+  updateProjectedStandingsUI() {
+    const target = this.standingsData.find(s => s.Driver.driverId === this.selectedDriverId) || this.standingsData[0];
+    const result = this.simulator.computeProjectedStandings(target.Driver.driverId);
     
     const bannerLead = document.getElementById('projectedOutcomeLead');
     const bannerSub = document.getElementById('projectedOutcomeSub');
+    const leaderboardEl = document.getElementById('projectedLeaderboard');
 
     const champion = result.champion;
-    const isTargetChampion = champion.driver.driverId === target.Driver.driverId;
+    const isTargetChampion = result.isTargetChampion;
 
     if (bannerLead && bannerSub) {
       if (isTargetChampion) {
         bannerLead.innerHTML = `🏆 PROJECTED CHAMPION: <span style="color:var(--f1-neon-green);">${champion.driver.givenName} ${champion.driver.familyName}</span>`;
-        bannerSub.innerHTML = `Final Points: <strong>${champion.projectedPoints} pts</strong> (+${champion.addedPoints} pts gained in remaining races). ${result.clinchEvent ? `Clinches at Round ${result.clinchEvent.round} (${result.clinchEvent.raceName})!` : 'Decided at the season finale!'}`;
+        bannerSub.innerHTML = `Finishes with <strong>${champion.projectedPoints} points</strong> (+${champion.addedPoints} pts in remaining races). ${result.clinchEvent ? `Clinches title at Round ${result.clinchEvent.round} (${result.clinchEvent.raceName})!` : 'Sealed at season finale!'}`;
       } else {
-        bannerLead.innerHTML = `🏁 PROJECTED WINNER: <span style="color:var(--f1-neon-yellow);">${champion.driver.givenName} ${champion.driver.familyName}</span> (${champion.projectedPoints} pts)`;
         const targetEntry = result.standings.find(s => s.driver.driverId === target.Driver.driverId);
-        bannerSub.innerHTML = `${target.Driver.givenName} finishes with ${targetEntry?.projectedPoints || 0} pts (Deficit: ${(champion.projectedPoints - (targetEntry?.projectedPoints || 0))} pts). Adjust rival positions above to engineer a winning path!`;
+        const margin = champion.projectedPoints - (targetEntry?.projectedPoints || 0);
+        bannerLead.innerHTML = `🏁 TITLE TAKEN BY: <span style="color:var(--f1-neon-yellow);">${champion.driver.givenName} ${champion.driver.familyName}</span> (${champion.projectedPoints} pts)`;
+        bannerSub.innerHTML = `Notice that <strong>${champion.driver.familyName}</strong> took the championship ahead of ${target.Driver.familyName} (${targetEntry?.projectedPoints || 0} pts, -${margin} pts deficit). Adjust positions or use 'Clean Sweep' preset to keep rivals in check!`;
       }
+    }
+
+    // Render Top 5 projected leaderboard pills
+    if (leaderboardEl) {
+      leaderboardEl.innerHTML = result.standings.slice(0, 5).map((d, idx) => `
+        <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; text-align:center;">
+          <div style="color:var(--f1-gray-400); font-size:0.65rem;">P${idx + 1}</div>
+          <div style="font-weight:700; color:#FFF;">${d.driver.code || d.driver.familyName.substring(0,3)}</div>
+          <div style="color:var(--f1-neon-yellow); font-family:var(--font-mono);">${d.projectedPoints}</div>
+        </div>
+      `).join('');
     }
   }
 
