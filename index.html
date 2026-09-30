@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F1 Championship Contenders & Clinch Calculator | Formula 1 World Title Scenarios</title>
+  <meta name="description" content="Calculate which Formula 1 drivers can still win the World Drivers' Championship. Test race-by-race finish scenarios, rival permutations, and clinching mathematics in real time.">
+  <meta name="keywords" content="F1, Formula 1, Championship Contenders, Driver Championship Calculator, Clinching Scenarios, F1 API, Jolpica F1, Ergast">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏎️</text></svg>">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/f1-teams.css">
+</head>
+<body>
+
+  <!-- Top Speed & Racing Stripes -->
+  <div class="speed-strip"></div>
+
+  <!-- Header Navigation -->
+  <header class="f1-header">
+    <div class="header-container">
+      <div class="f1-logo-badge">
+        <span class="f1-speed-icon">F1</span>
+        <div class="header-title-box">
+          <h1>CHAMPIONSHIP <span>CONTENDERS</span></h1>
+          <p>World Drivers' Championship Mathematical Scenarios & Clinch Permutations</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Season Switcher -->
+        <div class="season-selector-wrap">
+          <label for="seasonSelect">Season:</label>
+          <select id="seasonSelect" class="season-select" aria-label="Select F1 Season">
+            <option value="current" selected>2026 (Live Current)</option>
+            <option value="2025">2025 Championship</option>
+            <option value="2024">2024 Championship</option>
+            <option value="2021">2021 Title Battle</option>
+          </select>
+        </div>
+
+        <button id="btnSettings" class="btn-header" title="API Settings & Sources">
+          ⚙️ API Config
+        </button>
+
+        <button id="btnDeployGuide" class="btn-header primary" title="Deploy to Netlify Guide">
+          🚀 Netlify & GitHub Guide
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Live Season Telemetry Ticker -->
+  <div class="season-ticker">
+    <div class="ticker-content">
+      <div class="ticker-item">
+        <span class="ticker-label">Active Championship:</span>
+        <span id="tickerSeason" class="ticker-val">2026 Season</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-label">Current Leader:</span>
+        <span id="tickerCurrentLeader" class="ticker-val highlight">Loading...</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-label">Remaining Calendar:</span>
+        <span id="tickerRacesRemaining" class="ticker-val">8 Grands Prix</span>
+      </div>
+      <div class="ticker-item">
+        <span class="ticker-label">Max Points on Offer:</span>
+        <span id="tickerMaxPoints" class="ticker-val highlight">232 PTS</span>
+      </div>
+      <div class="api-status-badge">
+        <span class="api-pulse"></span>
+        <span id="apiStatusLabel">Jolpica Live F1 Connected</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Layout -->
+  <main class="main-layout">
+
+    <!-- View Mode Tabs -->
+    <div class="view-tabs" role="tablist">
+      <button class="view-tab-btn active" data-tab="scenarios" id="tabScenariosBtn" role="tab" aria-selected="true">
+        🏁 Driver Title Scenarios & Permutations
+      </button>
+      <button class="view-tab-btn" data-tab="simulator" id="tabSimulatorBtn" role="tab" aria-selected="false">
+        🧪 Race-by-Race "What-If" Permutations
+      </button>
+      <button class="view-tab-btn" data-tab="montecarlo" id="tabMonteCarloBtn" role="tab" aria-selected="false">
+        🎲 Monte Carlo Title Odds <span class="tab-badge">2,500 Sims</span>
+      </button>
+    </div>
+
+    <!-- Dual Grid: Left Standings Selector, Right Deep Mathematical Permutations -->
+    <div class="championship-grid">
+
+      <!-- Left Column: Driver Standings Board & Selector -->
+      <aside class="standings-panel" aria-label="F1 Driver Standings">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">🏆 Driver Standings</div>
+            <div class="panel-subtitle">Click any driver to compute championship scenarios</div>
+          </div>
+          <span class="tab-badge" id="driverCountBadge">Grid</span>
+        </div>
+
+        <div class="driver-list-scroll" id="driverListScroll">
+          <!-- Populated dynamically via app.js -->
+        </div>
+      </aside>
+
+      <!-- Right Column: Interactive Scenario Details & Laboratories -->
+      <section class="analysis-panel" id="mainAnalysisPanel">
+
+        <!-- Spotlight Driver Hero Banner -->
+        <article class="spotlight-card" id="spotlightCard">
+          <div class="spotlight-bg-watermark" id="spotlightWatermark">4</div>
+
+          <div class="spotlight-top">
+            <div class="spotlight-driver-group">
+              <div class="spotlight-helmet-ring" id="spotlightAvatar">NOR</div>
+              <div class="spotlight-title-area">
+                <h2 id="spotlightDriverName">Lando Norris</h2>
+                <div class="spotlight-team-tag" id="spotlightTeamName">McLaren • Car #4</div>
+              </div>
+            </div>
+
+            <div class="spotlight-verdict-box">
+              <div class="verdict-badge can-win" id="spotlightVerdict">
+                ⚡ CAN WIN CHAMPIONSHIP
+              </div>
+              <div class="verdict-subtext" id="spotlightVerdictSub">
+                Mathematical contender for the 2026 World Title!
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Core Metrics -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">Current Total</span>
+              <span class="metric-value" id="metricCurrentPts">298</span>
+              <span class="metric-hint">Scored to date</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Maximum Ceiling</span>
+              <span class="metric-value highlight-green" id="metricMaxPts">530</span>
+              <span class="metric-hint">If wins every remaining race</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Deficit to P1</span>
+              <span class="metric-value highlight-green" id="metricGap">LEADER</span>
+              <span class="metric-hint">Points needed to overtake</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Points on Table</span>
+              <span class="metric-value highlight-yellow" id="metricAvailPts">232</span>
+              <span class="metric-hint">Remaining across season</span>
+            </div>
+          </div>
+
+          <!-- Title Range Progress Bar -->
+          <div class="progress-section">
+            <div class="progress-header">
+              <span style="color:var(--f1-gray-400);">Championship Points Reach vs Maximum Ceiling</span>
+              <span id="clinchProgressPct" style="color:var(--f1-neon-green); font-family:var(--font-mono);">100% Title Range</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="clinchProgressBarFill" style="width: 100%;"></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- TAB 1: Scenarios & Rival Permutations -->
+        <div id="tabContentScenarios">
+          <div class="scenarios-container">
+            <div class="section-head">
+              <div>
+                <h3>📋 Path to the Crown: Rival Permutations</h3>
+                <p class="section-tagline">What must happen with the current leader and other contenders for this driver to win</p>
+              </div>
+            </div>
+
+            <!-- Condition Cards Grid -->
+            <div class="scenario-condition-cards" id="scenarioCardsList">
+              <!-- Dynamically populated via app.js -->
+            </div>
+
+            <!-- Rivals Elimination Threshold Table -->
+            <div class="rivals-table-box">
+              <h4 style="font-family: var(--font-racing); font-size: 1.15rem; margin-bottom: 0.75rem; text-transform: uppercase;">
+                🎯 Rival Contenders Threshold Matrix
+              </h4>
+              <table class="rivals-table" id="rivalsTable">
+                <thead>
+                  <tr>
+                    <th>Contender</th>
+                    <th>Current Points</th>
+                    <th>Max Allowed Points</th>
+                    <th>Finishing Restriction</th>
+                    <th>Status vs Selected Driver</th>
+                  </tr>
+                </thead>
+                <tbody id="rivalsTableBody">
+                  <!-- Populated via app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: Interactive What-If Permutations Simulator -->
+        <div id="tabContentSimulator" style="display: none;">
+          <div class="simulator-container">
+            <div class="section-head">
+              <div>
+                <h3>🧪 Race-by-Race What-If Permutations</h3>
+                <p class="section-tagline">Set custom finishes for the selected driver and the championship leader for every remaining race</p>
+              </div>
+            </div>
+
+            <!-- Quick Action Presets -->
+            <div class="quick-sim-presets">
+              <span style="font-size:0.8rem; font-weight:700; color:var(--f1-gray-400); align-self:center;">PRESETS:</span>
+              <button class="btn-preset primary" id="btnPresetSweep">
+                🚀 Clean Sweep (Selected Wins All)
+              </button>
+              <button class="btn-preset" id="btnPresetDnf">
+                💥 Leader Nightmare (DNFs / 0 Pts)
+              </button>
+              <button class="btn-preset" id="btnPresetP1P2">
+                🥈 Leader P2 Squeeze (Driver P1, Leader P2)
+              </button>
+              <button class="btn-preset" id="btnPresetReset">
+                ↺ Reset Default
+              </button>
+            </div>
+
+            <!-- Projected Outcome Banner -->
+            <div class="projected-summary-bar" id="projectedSummaryBar">
+              <div>
+                <div class="summary-lead-text" id="projectedOutcomeLead">
+                  🏆 PROJECTED CHAMPION: Calculating...
+                </div>
+                <div style="font-size: 0.85rem; color: var(--f1-gray-100); margin-top: 4px;" id="projectedOutcomeSub">
+                  Simulating championship permutations based on assigned finishes...
+                </div>
+              </div>
+            </div>
+
+            <!-- Remaining Calendar Cards Grid -->
+            <div class="race-cards-grid" id="raceCardsContainer" style="margin-top: 1.5rem;">
+              <!-- Populated dynamically via app.js -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: Monte Carlo Odds -->
+        <div id="tabContentMonteCarlo" style="display: none;">
+          <div class="mc-container">
+            <div class="section-head">
+              <div>
+                <h3>🎲 Monte Carlo Championship Probability</h3>
+                <p class="section-tagline">Simulates 2,500 seasons factoring in form, qualifying pace, variance, and sprint formats</p>
+              </div>
+              <button class="btn-preset primary" id="btnRunMonteCarlo">
+                ⚡ Re-Run 2,500 Simulations
+              </button>
+            </div>
+
+            <div class="mc-odds-grid" id="monteCarloOddsList">
+              <!-- Populated dynamically via app.js -->
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </main>
+
+  <!-- MODAL: API Configuration -->
+  <div class="modal-overlay" id="modalSettings">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>⚙️ F1 Public API Configuration</h3>
+        <button class="modal-close-btn" id="closeSettings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="info-callout success">
+          <strong>Recommended Free API:</strong> The website is connected to <strong>Jolpica F1 API</strong> (api.jolpi.ca), the open-source community successor to Ergast. It is <strong>100% free, requires NO API key</strong>, has generous rate limits (500 req/hr), and works seamlessly in all browsers!
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="apiProviderSelect">Select API Provider</label>
+          <select id="apiProviderSelect" class="form-input">
+            <option value="jolpica" selected>Jolpica F1 API (Free, No Key Needed, Official Ergast format)</option>
+            <option value="apisports">API-Sports / Formula 1 (RapidAPI Key required)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="apiKeyGroup">
+          <label class="form-label" for="apiKeyInput">Optional API Key (for API-Sports)</label>
+          <input type="password" id="apiKeyInput" class="form-input" placeholder="Enter your RapidAPI / API-Sports key...">
+          <p class="form-help">Stored securely in your browser's localStorage. Leave blank when using free Jolpica F1.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-header primary" id="saveSettings">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Netlify & GitHub Deployment Guide -->
+  <div class="modal-overlay" id="modalDeploy">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🚀 GitHub & Free Web Hosting Guide</h3>
+        <button class="modal-close-btn" id="closeDeploy">&times;</button>
+      </div>
+      <div class="modal-body" style="line-height: 1.6; font-size: 0.9rem;">
+        <h4 style="font-family: var(--font-racing); font-size: 1.2rem; color: #FFF; margin-bottom: 0.5rem;">
+          Deploying to Netlify (Recommended Free Host)
+        </h4>
+        <p>Netlify is the ideal free host for this project because this website is built with modern, zero-dependency Vanilla web technologies that require <strong>zero Node.js build steps</strong>.</p>
+        
+        <ol style="margin-left: 1.25rem; margin-top: 0.5rem; margin-bottom: 1rem;">
+          <li>Push your repository to <strong>GitHub</strong>.</li>
+          <li>Log into <strong><a href="https://netlify.com" target="_blank" style="color:var(--f1-cyan);">Netlify.com</a></strong> (Free account).</li>
+          <li>Click <strong>"Add new site" &gt; "Import an existing project"</strong> and select your GitHub repo.</li>
+          <li>Leave <strong>Build command</strong> blank (or empty). Set <strong>Publish directory</strong> to <code>.</code> (already configured in <code>netlify.toml</code>).</li>
+          <li>If using an API key with API-Sports, navigate to <strong>Site configuration &gt; Environment variables</strong> and add your secret key.</li>
+          <li>Click <strong>Deploy Site</strong>! Your website is live worldwide with free automated SSL and CDN caching.</li>
+        </ol>
+
+        <h4 style="font-family: var(--font-racing); font-size: 1.2rem; color: #FFF; margin-top: 1rem; margin-bottom: 0.5rem;">
+          Alternative Free Web Hosts Compared
+        </h4>
+        <ul style="margin-left: 1.25rem;">
+          <li><strong>Cloudflare Pages:</strong> Truly unlimited bandwidth, ultra-low latency edge network, completely free.</li>
+          <li><strong>Vercel:</strong> Lightning fast, great GitHub integration, but Netlify provides easier drag-and-drop & generous bandwidth.</li>
+          <li><strong>GitHub Pages:</strong> Direct 1-click deployment from your GitHub repo under <code>Settings &gt; Pages</code>.</li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-header" id="closeDeploy">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="f1-footer">
+    <div class="footer-content">
+      <p style="font-weight: 600; color: #FFF;">
+        F1 Championship Contenders & Clinch Calculator
+      </p>
+      <p>
+        Data powered by the open-source Jolpica F1 API (Ergast successor). This website is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.
+      </p>
+      <div class="footer-links">
+        <button onclick="document.getElementById('modalSettings').classList.add('open')">API Configuration</button>
+        <span>•</span>
+        <button onclick="document.getElementById('modalDeploy').classList.add('open')">Netlify Hosting Guide</button>
+        <span>•</span>
+        <a href="https://api.jolpi.ca" target="_blank" rel="noopener">Jolpica F1 API Docs</a>
+        <span>•</span>
+        <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

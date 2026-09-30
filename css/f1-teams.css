@@ -1,0 +1,62 @@
+/* F1 Constructors Color & Livery System */
+:root {
+  --team-mclaren: #FF8000;
+  --team-mclaren-glow: rgba(255, 128, 0, 0.4);
+  --team-ferrari: #E8002D;
+  --team-ferrari-glow: rgba(232, 0, 45, 0.4);
+  --team-red_bull: #1E41FF;
+  --team-red_bull-glow: rgba(30, 65, 255, 0.4);
+  --team-mercedes: #00D2BE;
+  --team-mercedes-glow: rgba(0, 210, 190, 0.4);
+  --team-aston_martin: #229971;
+  --team-aston_martin-glow: rgba(34, 153, 113, 0.4);
+  --team-alpine: #0090FF;
+  --team-alpine-glow: rgba(0, 144, 255, 0.4);
+  --team-williams: #00A0DE;
+  --team-williams-glow: rgba(0, 160, 222, 0.4);
+  --team-rb: #6692FF;
+  --team-rb-glow: rgba(102, 146, 255, 0.4);
+  --team-haas: #B6BABD;
+  --team-haas-glow: rgba(182, 186, 189, 0.4);
+  --team-audi: #52E252;
+  --team-audi-glow: rgba(82, 226, 82, 0.4);
+  --team-sauber: #52E252;
+  --team-sauber-glow: rgba(82, 226, 82, 0.4);
+  --team-cadillac: #D4AF37;
+  --team-cadillac-glow: rgba(212, 175, 55, 0.4);
+}
+
+/* Team Border and Accent helpers */
+[data-team="mclaren"] { --team-color: var(--team-mclaren); --team-glow: var(--team-mclaren-glow); }
+[data-team="ferrari"] { --team-color: var(--team-ferrari); --team-glow: var(--team-ferrari-glow); }
+[data-team="red_bull"] { --team-color: var(--team-red_bull); --team-glow: var(--team-red_bull-glow); }
+[data-team="mercedes"] { --team-color: var(--team-mercedes); --team-glow: var(--team-mercedes-glow); }
+[data-team="aston_martin"] { --team-color: var(--team-aston_martin); --team-glow: var(--team-aston_martin-glow); }
+[data-team="alpine"] { --team-color: var(--team-alpine); --team-glow: var(--team-alpine-glow); }
+[data-team="williams"] { --team-color: var(--team-williams); --team-glow: var(--team-williams-glow); }
+[data-team="rb"] { --team-color: var(--team-rb); --team-glow: var(--team-rb-glow); }
+[data-team="haas"] { --team-color: var(--team-haas); --team-glow: var(--team-haas-glow); }
+[data-team="audi"] { --team-color: var(--team-audi); --team-glow: var(--team-audi-glow); }
+[data-team="sauber"] { --team-color: var(--team-sauber); --team-glow: var(--team-sauber-glow); }
+[data-team="cadillac"] { --team-color: var(--team-cadillac); --team-glow: var(--team-cadillac-glow); }
+
+.team-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-left: 3px solid var(--team-color, #e10600);
+}
+
+.team-stripe {
+  height: 4px;
+  width: 100%;
+  background: var(--team-color, #e10600);
+  box-shadow: 0 0 10px var(--team-glow, rgba(225, 6, 0, 0.4));
+}
