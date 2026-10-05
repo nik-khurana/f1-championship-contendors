@@ -7,6 +7,11 @@
   <meta name="description" content="Calculate which Formula 1 drivers can still win the World Drivers' Championship. Test race-by-race finish scenarios, rival permutations, and clinching mathematics in real time.">
   <meta name="keywords" content="F1, Formula 1, Championship Contenders, Driver Championship Calculator, Clinching Scenarios, F1 API, Jolpica F1, Ergast">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏎️</text></svg>">
+
+  <!-- Security Hardening: Content-Security-Policy, MIME, and Referrer -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://api.jolpi.ca https://v1.formula-1.api-sports.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="css/style.css">
@@ -23,7 +28,10 @@
       <div class="f1-logo-badge">
         <span class="f1-speed-icon">F1</span>
         <div class="header-title-box">
-          <h1>CHAMPIONSHIP <span>CONTENDERS</span></h1>
+          <div class="title-with-badge">
+            <h1>CHAMPIONSHIP <span>CONTENDERS</span></h1>
+            <span class="badge-monday-sync" title="Championship standings & remaining race calendars automatically update every Monday following Sunday Grands Prix">📅 Updates Every Monday</span>
+          </div>
           <p>World Drivers' Championship Mathematical Scenarios & Clinch Permutations</p>
         </div>
       </div>
@@ -70,6 +78,10 @@
         <span class="ticker-label">Max Points on Offer:</span>
         <span id="tickerMaxPoints" class="ticker-val highlight">232 PTS</span>
       </div>
+      <div class="ticker-item schedule-pill">
+        <span class="ticker-label">Data Schedule:</span>
+        <span class="ticker-val highlight-cyan" title="Standings and race calendars sync weekly every Monday after Sunday Grand Prix results">📅 Updates Every Monday</span>
+      </div>
       <div class="api-status-wrap">
         <button id="apiStatusBadge" class="api-status-badge" title="Click to view Cache & IP Rate-Limit details">
           <span class="api-pulse" id="apiStatusPulse"></span>
@@ -109,6 +121,12 @@
             <div class="panel-subtitle">Click any driver to compute championship scenarios</div>
           </div>
           <span class="tab-badge" id="driverCountBadge">Grid</span>
+        </div>
+
+        <!-- Monday Update Notice Banner -->
+        <div class="monday-sync-banner">
+          <span class="sync-banner-icon">📅</span>
+          <span>Official F1 standings & calendar update <strong>every Monday</strong> post-Grand Prix.</span>
         </div>
 
         <div class="driver-list-scroll" id="driverListScroll">
@@ -398,7 +416,7 @@
         
         <ol style="margin-left: 1.25rem; margin-top: 0.5rem; margin-bottom: 1rem;">
           <li>Push your repository to <strong>GitHub</strong>.</li>
-          <li>Log into <strong><a href="https://netlify.com" target="_blank" style="color:var(--f1-cyan);">Netlify.com</a></strong> (Free account).</li>
+          <li>Log into <strong><a href="https://netlify.com" target="_blank" rel="noopener noreferrer" style="color:var(--f1-cyan);">Netlify.com</a></strong> (Free account).</li>
           <li>Click <strong>"Add new site" &gt; "Import an existing project"</strong> and select your GitHub repo.</li>
           <li>Leave <strong>Build command</strong> blank (or empty). Set <strong>Publish directory</strong> to <code>.</code> (already configured in <code>netlify.toml</code>).</li>
           <li>If using an API key with API-Sports, navigate to <strong>Site configuration &gt; Environment variables</strong> and add your secret key.</li>
@@ -423,6 +441,10 @@
   <!-- Footer -->
   <footer class="f1-footer">
     <div class="footer-content">
+      <div class="footer-schedule-banner">
+        <span class="schedule-icon">📅</span>
+        <span><strong>Automated Update Schedule:</strong> F1 championship standings and race calendars automatically refresh <strong>every Monday at 06:00 UTC</strong> following Sunday Grand Prix results. Stored locally in your browser to avoid API rate limits and deliver instantaneous load times.</span>
+      </div>
       <p style="font-weight: 600; color: #FFF;">
         F1 Championship Contenders & Clinch Calculator
       </p>
@@ -434,11 +456,12 @@
         <span>•</span>
         <button onclick="document.getElementById('modalDeploy').classList.add('open')">Netlify Hosting Guide</button>
         <span>•</span>
-        <a href="https://api.jolpi.ca" target="_blank" rel="noopener">Jolpica F1 API Docs</a>
+        <a href="https://api.jolpi.ca" target="_blank" rel="noopener noreferrer">Jolpica F1 API Docs</a>
         <span>•</span>
-        <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
     </div>
+  </footer>
   <!-- Floating Toast Notifications -->
   <div id="toastContainer" class="f1-toast-container" aria-live="polite"></div>
 

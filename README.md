@@ -60,6 +60,31 @@ F1 Grand Prix races take place on Sundays, with final classifications and stewar
 
 ---
 
+## 🔒 Security Measures & Best Practices Implemented
+
+The application implements defense-in-depth security best practices across headers, DOM rendering, input sanitization, and storage integrity:
+
+1. **Content Security Policy (CSP)**:
+   - Configured in `netlify.toml` and `<head>` of `index.html`.
+   - Restricts scripts to `'self'`, fonts to trusted CDNs (`fonts.gstatic.com`), and network connections strictly to approved API endpoints (`api.jolpi.ca`, `api-sports.io`). Disallows inline object embeds (`object-src 'none'`) and frame hijacking (`frame-ancestors 'none'`).
+2. **HTTP Hardening Headers**:
+   - **HSTS (`Strict-Transport-Security`):** Enforces HTTPS encryption for 1 year with `includeSubDomains; preload`.
+   - **Clickjacking Protection (`X-Frame-Options: DENY`):** Prevents the site from being framed inside malicious iframes.
+   - **MIME Sniffing Defense (`X-Content-Type-Options: nosniff`):** Stops browsers from executing non-script files as code.
+   - **Referrer Privacy (`Referrer-Policy: strict-origin-when-cross-origin`):** Strips sensitive path data from outbound referrers.
+   - **Permissions Policy:** Restricts hardware capabilities (`camera=()`, `microphone=()`, `geolocation=()`, `payment=()`, `usb=()`).
+   - **Cross-Origin Opener / Resource Policy (COOP & CORP):** Enforces `same-origin` isolation.
+3. **DOM-Based XSS Sanitization**:
+   - All dynamic strings returned by external APIs (driver names, codes, constructors, circuits) are sanitized using an `escapeHTML()` encoder before rendering into template literals or `innerHTML`.
+4. **Input Validation & API Key Defense**:
+   - API key inputs are strictly sanitized (`sanitizeApiKey`), removing non-alphanumeric characters, whitespace, and script injection payloads. Keys are stored with masked password fields.
+5. **Cache Schema Validation**:
+   - Stored `localStorage` JSON payloads are type-checked and validated before being accepted by the app, preventing prototype pollution or deserialization errors from tampered storage.
+6. **Reverse Tabnabbing Protection**:
+   - All external outbound links (`target="_blank"`) enforce `rel="noopener noreferrer"`.
+
+---
+
 ## 🚀 Hosting on Netlify (Step-by-Step)
 
 Netlify is the ideal free host for this website because it requires **no Node.js build process** (`publish = "."` in `netlify.toml`).

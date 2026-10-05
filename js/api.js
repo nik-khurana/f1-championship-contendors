@@ -89,7 +89,28 @@ export function getNextMondayTimestamp(hourUTC = MONDAY_CUTOFF_HOUR_UTC) {
 }
 
 /**
- * Robust LocalStorage Cache Manager with In-Memory fallback
+ * HTML Escaping utility to defend against DOM-based XSS attacks from external API payloads
+ */
+export function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Sanitizes and validates user input for API keys (alphanumeric, dashes, underscores only)
+ */
+export function sanitizeApiKey(key) {
+  if (typeof key !== 'string') return '';
+  return key.trim().replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 128);
+}
+
+/**
+ * Robust LocalStorage Cache Manager with In-Memory fallback & Schema Integrity Checks
  */
 class LocalCacheManager {
   constructor() {
@@ -111,9 +132,15 @@ class LocalCacheManager {
     if (this.isAvailable()) {
       try {
         const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        const entry = JSON.parse(raw);
+        // Schema and type integrity validation to prevent prototype pollution or invalid cache
+        if (entry && typeof entry === 'object' && typeof entry.timestamp === 'number' && entry.data) {
+          return entry;
+        }
+        return null;
       } catch (e) {
-        console.warn('LocalStorage read error, falling back to memory:', e);
+        console.warn('LocalStorage read/validation error, falling back to memory:', e);
       }
     }
     return this.memoryFallback.get(key) || null;
@@ -217,11 +244,13 @@ class F1ApiClient {
   }
 
   setProvider(provider, apiKey = '') {
-    this.provider = provider;
-    this.apiSportsKey = apiKey;
-    localStorage.setItem('f1_api_provider', provider);
-    if (apiKey) {
-      localStorage.setItem('f1_apisports_key', apiKey);
+    const validProviders = ['jolpica', 'apisports'];
+    this.provider = validProviders.includes(provider) ? provider : 'jolpica';
+    const cleanKey = sanitizeApiKey(apiKey);
+    this.apiSportsKey = cleanKey;
+    localStorage.setItem('f1_api_provider', this.provider);
+    if (cleanKey) {
+      localStorage.setItem('f1_apisports_key', cleanKey);
     } else {
       localStorage.removeItem('f1_apisports_key');
     }
@@ -229,8 +258,9 @@ class F1ApiClient {
   }
 
   setCachePolicy(policy) {
-    this.cachePolicy = policy;
-    localStorage.setItem(POLICY_STORAGE_KEY, policy);
+    const validPolicies = ['monday', '7days', 'daily', 'always_fresh'];
+    this.cachePolicy = validPolicies.includes(policy) ? policy : 'monday';
+    localStorage.setItem(POLICY_STORAGE_KEY, this.cachePolicy);
   }
 
   getCachePolicy() {

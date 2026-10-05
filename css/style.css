@@ -129,6 +129,30 @@ body {
   box-shadow: 0 0 15px var(--f1-red-glow);
 }
 
+.title-with-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.badge-monday-sync {
+  font-family: var(--font-main);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  color: var(--f1-cyan);
+  box-shadow: 0 0 10px rgba(0, 210, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .header-title-box h1 {
   font-family: var(--font-racing);
   font-size: 1.5rem;
@@ -263,6 +287,18 @@ body {
 
 .ticker-val.highlight {
   color: var(--f1-neon-yellow);
+}
+
+.ticker-val.highlight-cyan {
+  color: var(--f1-cyan);
+  font-size: 0.95rem;
+}
+
+.ticker-item.schedule-pill {
+  background: rgba(0, 210, 255, 0.08);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 210, 255, 0.2);
 }
 
 .api-status-wrap {
@@ -1610,4 +1646,55 @@ body {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Monday Sync Notice Banner in Standings Panel */
+.monday-sync-banner {
+  background: rgba(0, 210, 255, 0.06);
+  border: 1px solid rgba(0, 210, 255, 0.22);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin: 0.75rem 1rem 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--f1-gray-300);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.35;
+}
+
+.sync-banner-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.monday-sync-banner strong {
+  color: var(--f1-cyan);
+}
+
+/* Footer Schedule Banner */
+.footer-schedule-banner {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--f1-gray-300);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.45;
+  text-align: left;
+  max-width: 900px;
+}
+
+.footer-schedule-banner strong {
+  color: var(--f1-cyan);
+}
+
+.schedule-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
 

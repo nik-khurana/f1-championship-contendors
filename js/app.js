@@ -1,7 +1,7 @@
 /**
  * Formula 1 Championship Permutations & Multi-Contender UI Controller
  */
-import { f1Api, FALLBACK_DATA_2026 } from './api.js';
+import { f1Api, FALLBACK_DATA_2026, escapeHTML } from './api.js';
 import { ChampionshipCalculator } from './calculator.js';
 import { RaceSimulator } from './simulator.js';
 
@@ -159,7 +159,7 @@ class F1ChampionshipApp {
     if (type === 'success') icon = '✅';
     if (type === 'warning') icon = '⚠️';
     if (type === 'danger') icon = '🚨';
-    toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    toast.innerHTML = `<span>${icon}</span> <span>${escapeHTML(message)}</span>`;
     container.appendChild(toast);
 
     setTimeout(() => {
@@ -293,20 +293,26 @@ class F1ChampionshipApp {
         statusBadgeHtml = `<span class="driver-status-badge eliminated">❌ Eliminated</span>`;
       }
 
+      const givenName = escapeHTML(driver.driver.givenName);
+      const familyName = escapeHTML(driver.driver.familyName);
+      const code = escapeHTML(driver.driver.code || driver.driver.familyName.substring(0, 3).toUpperCase());
+      const permNumber = escapeHTML(driver.driver.permanentNumber || driver.position);
+      const teamName = escapeHTML(team ? team.name : 'Formula 1 Team');
+
       card.innerHTML = `
         <div class="driver-rank ${rankClass}">${driver.position}</div>
         <div class="driver-avatar-box">
-          ${driver.driver.code || driver.driver.familyName.substring(0, 3).toUpperCase()}
-          <span class="driver-num-tag">${driver.driver.permanentNumber || driver.position}</span>
+          ${code}
+          <span class="driver-num-tag">${permNumber}</span>
         </div>
         <div class="driver-info">
           <div class="driver-name-row">
-            <span class="driver-fullname">${driver.driver.givenName} ${driver.driver.familyName}</span>
-            <span class="driver-code-pill">${driver.driver.code || ''}</span>
+            <span class="driver-fullname">${givenName} ${familyName}</span>
+            <span class="driver-code-pill">${code}</span>
           </div>
           <div class="driver-team-row">
             <span class="team-indicator-dot"></span>
-            <span>${team ? team.name : 'Formula 1 Team'}</span>
+            <span>${teamName}</span>
           </div>
           <div>${statusBadgeHtml}</div>
         </div>
