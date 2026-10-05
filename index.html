@@ -70,9 +70,14 @@
         <span class="ticker-label">Max Points on Offer:</span>
         <span id="tickerMaxPoints" class="ticker-val highlight">232 PTS</span>
       </div>
-      <div class="api-status-badge">
-        <span class="api-pulse"></span>
-        <span id="apiStatusLabel">Jolpica Live F1 Connected</span>
+      <div class="api-status-wrap">
+        <button id="apiStatusBadge" class="api-status-badge" title="Click to view Cache & IP Rate-Limit details">
+          <span class="api-pulse" id="apiStatusPulse"></span>
+          <span id="apiStatusLabel">Checking API...</span>
+        </button>
+        <button id="btnQuickRefresh" class="btn-quick-refresh" title="Force refresh standings from F1 API">
+          <span class="refresh-icon">🔄</span> Refresh
+        </button>
       </div>
     </div>
   </div>
@@ -297,7 +302,68 @@
           <strong>Recommended Free API:</strong> The website is connected to <strong>Jolpica F1 API</strong> (api.jolpi.ca), the open-source community successor to Ergast. It is <strong>100% free, requires NO API key</strong>, has generous rate limits (500 req/hr), and works seamlessly in all browsers!
         </div>
 
+        <!-- IP Isolation & Weekly Cache Architecture Card -->
+        <div class="cache-shield-card">
+          <div class="cache-shield-header">
+            <span class="shield-icon">🛡️</span>
+            <div>
+              <h4 class="shield-title">Per-User IP Isolation & Weekly Cache Shield</h4>
+              <p class="shield-subtitle">How rate limits are eliminated across users and visits</p>
+            </div>
+          </div>
+          <div class="shield-body">
+            <div class="shield-point">
+              <span class="point-badge">1. Distinct User IPs (Client-Side Requests)</span>
+              <p>API requests are dispatched <strong>directly from each visitor's browser</strong>. Jolpica API sees distinct public IP addresses per user, preventing all visitors from sharing a single throttled server proxy IP.</p>
+            </div>
+            <div class="shield-point">
+              <span class="point-badge">2. Weekly Monday Invalidation (localStorage)</span>
+              <p>F1 Grands Prix conclude on Sunday. Standings are stored locally in your browser's <code>localStorage</code> and automatically sync every <strong>Monday at 06:00 UTC</strong>. Return visits throughout the week load in <strong>0ms with 0 API calls</strong>.</p>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
+          <label class="form-label" for="cachePolicySelect">Local Storage Cache Schedule</label>
+          <select id="cachePolicySelect" class="form-input">
+            <option value="monday" selected>Weekly (Every Monday at 06:00 UTC) - Recommended for F1</option>
+            <option value="7days">Every 7 Days (Rolling 168 hours)</option>
+            <option value="daily">Daily (Every 24 hours)</option>
+            <option value="always_fresh">Live API on Every Visit (Disable local cache)</option>
+          </select>
+          <p class="form-help">Historical seasons (2025, 2024, 2021) are completed championships and cached permanently.</p>
+        </div>
+
+        <!-- Live Cache Telemetry -->
+        <div class="cache-telemetry-box">
+          <div class="telemetry-row">
+            <span class="telemetry-lbl">Local Cache:</span>
+            <span id="cacheStorageStatus" class="telemetry-val highlight">Active (localStorage)</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-lbl">Last Synced:</span>
+            <span id="cacheLastSynced" class="telemetry-val">Checking...</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-lbl">Next Auto-Refresh:</span>
+            <span id="cacheNextRefresh" class="telemetry-val">Checking...</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-lbl">Client IP Quota:</span>
+            <span class="telemetry-val tag-green">Client-Side Direct (Isolated)</span>
+          </div>
+        </div>
+
+        <div class="cache-actions-row">
+          <button type="button" id="btnForceRefreshModal" class="btn-subaction">
+            🔄 Force Refresh Now
+          </button>
+          <button type="button" id="btnClearCacheModal" class="btn-subaction danger">
+            🗑️ Clear Local Cache
+          </button>
+        </div>
+
+        <div class="form-group" style="margin-top: 1.25rem;">
           <label class="form-label" for="apiProviderSelect">Select API Provider</label>
           <select id="apiProviderSelect" class="form-input">
             <option value="jolpica" selected>Jolpica F1 API (Free, No Key Needed, Official Ergast format)</option>
@@ -373,7 +439,8 @@
         <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
       </div>
     </div>
-  </footer>
+  <!-- Floating Toast Notifications -->
+  <div id="toastContainer" class="f1-toast-container" aria-live="polite"></div>
 
   <!-- Scripts -->
   <script type="module" src="js/app.js"></script>

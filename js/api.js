@@ -1,13 +1,30 @@
 /**
- * F1 Championship Contenders - API Client
- * Primary: Jolpica F1 API (Free, open-source, Ergast successor, no key needed)
- * Secondary: API-Sports / RapidAPI (Optionally configured with custom key)
+ * F1 Championship Contenders - API Client & Local Caching Engine
+ * 
+ * Features:
+ * 1. Client-Side IP Isolation:
+ *    All API requests run client-side directly from each user's browser.
+ *    Each visitor connects from their own unique public IP address, so rate limits
+ *    (e.g. 500 req/hr on Jolpica) are naturally isolated per user rather than
+ *    congested behind a single shared server proxy.
+ * 
+ * 2. Weekly / Monday Cache Invalidation:
+ *    F1 Grand Prix races take place on Sundays. Results and penalties are settled
+ *    by Sunday night / Monday morning UTC. Data is cached in the user's browser
+ *    `localStorage` and automatically refreshes each Monday at 06:00 UTC.
+ *    Visits throughout Tuesday–Sunday load in 0ms with ZERO network requests.
+ * 
+ * 3. Rate-Limit Shield & Graceful Degradation:
+ *    Includes client-side request throttling, HTTP 429 backoff handling, and
+ *    stale-while-revalidate fallbacks so users never face a broken screen.
  */
 
 const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 min cache
+const STORAGE_PREFIX = 'f1_cache_';
+const POLICY_STORAGE_KEY = 'f1_cache_policy';
+const MONDAY_CUTOFF_HOUR_UTC = 6; // 06:00 UTC Monday morning
 
-// Robust Fallback Standings in case of network restriction or offline testing
+// Robust Fallback Standings in case of offline testing or API downtime
 export const FALLBACK_DATA_2026 = {
   season: "2026",
   standings: [
@@ -47,11 +64,156 @@ export const FALLBACK_DATA_2026 = {
   ]
 };
 
+/**
+ * Returns epoch timestamp of the most recent Monday at `hourUTC:00:00 UTC`.
+ */
+export function getLastMondayTimestamp(hourUTC = MONDAY_CUTOFF_HOUR_UTC) {
+  const now = new Date();
+  const d = new Date(now.getTime());
+  const day = d.getUTCDay(); // 0 is Sun, 1 is Mon, ..., 6 is Sat
+  const daysBack = (day + 6) % 7; // Mon -> 0, Tue -> 1, ..., Sun -> 6
+  d.setUTCDate(d.getUTCDate() - daysBack);
+  d.setUTCHours(hourUTC, 0, 0, 0);
+
+  if (daysBack === 0 && now.getTime() < d.getTime()) {
+    d.setUTCDate(d.getUTCDate() - 7);
+  }
+  return d.getTime();
+}
+
+/**
+ * Returns epoch timestamp of the next upcoming Monday at `hourUTC:00:00 UTC`.
+ */
+export function getNextMondayTimestamp(hourUTC = MONDAY_CUTOFF_HOUR_UTC) {
+  return getLastMondayTimestamp(hourUTC) + (7 * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * Robust LocalStorage Cache Manager with In-Memory fallback
+ */
+class LocalCacheManager {
+  constructor() {
+    this.memoryFallback = new Map();
+  }
+
+  isAvailable() {
+    try {
+      const test = '__f1_storage_test__';
+      window.localStorage.setItem(test, test);
+      window.localStorage.removeItem(test);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  getItem(key) {
+    if (this.isAvailable()) {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        console.warn('LocalStorage read error, falling back to memory:', e);
+      }
+    }
+    return this.memoryFallback.get(key) || null;
+  }
+
+  setItem(key, data, metadata = {}) {
+    const entry = {
+      data,
+      timestamp: Date.now(),
+      dateStr: new Date().toISOString(),
+      ...metadata
+    };
+
+    if (this.isAvailable()) {
+      try {
+        window.localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(entry));
+      } catch (e) {
+        console.warn('LocalStorage write error (quota exceeded?), using memory:', e);
+      }
+    }
+    this.memoryFallback.set(key, entry);
+    return entry;
+  }
+
+  removeItem(key) {
+    if (this.isAvailable()) {
+      try {
+        window.localStorage.removeItem(STORAGE_PREFIX + key);
+      } catch {}
+    }
+    this.memoryFallback.delete(key);
+  }
+
+  clearAll(season = null) {
+    if (this.isAvailable()) {
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const k = window.localStorage.key(i);
+          if (k && k.startsWith(STORAGE_PREFIX)) {
+            if (!season || k.includes(`_${season}_`)) {
+              keysToRemove.push(k);
+            }
+          }
+        }
+        keysToRemove.forEach(k => window.localStorage.removeItem(k));
+      } catch {}
+    }
+    if (!season) {
+      this.memoryFallback.clear();
+    } else {
+      for (const k of this.memoryFallback.keys()) {
+        if (k.includes(`_${season}_`)) this.memoryFallback.delete(k);
+      }
+    }
+  }
+
+  /**
+   * Evaluates if a cache item is still fresh
+   * @param {Object} entry 
+   * @param {string} season 
+   * @param {string} policy 'monday' | '7days' | 'daily' | 'always_fresh'
+   */
+  isValid(entry, season, policy = 'monday') {
+    if (!entry || !entry.timestamp) return false;
+    
+    // Historical seasons (completed years) never change - cache permanently
+    const isHistorical = season && season !== 'current' && season !== '2026';
+    if (isHistorical) return true;
+
+    if (policy === 'always_fresh') return false;
+
+    const now = Date.now();
+    if (policy === 'daily') {
+      return (now - entry.timestamp) < (24 * 60 * 60 * 1000);
+    }
+    if (policy === '7days') {
+      return (now - entry.timestamp) < (7 * 24 * 60 * 60 * 1000);
+    }
+    if (policy === 'monday') {
+      // Valid if cached AFTER the most recent Monday cutoff (06:00 UTC)
+      const lastMonday = getLastMondayTimestamp(MONDAY_CUTOFF_HOUR_UTC);
+      return entry.timestamp >= lastMonday;
+    }
+
+    return false;
+  }
+}
+
 class F1ApiClient {
   constructor() {
-    this.provider = localStorage.getItem('f1_api_provider') || 'jolpica'; // 'jolpica' or 'apisports'
+    this.cacheManager = new LocalCacheManager();
+    this.provider = localStorage.getItem('f1_api_provider') || 'jolpica';
     this.apiSportsKey = localStorage.getItem('f1_apisports_key') || '';
-    this.cache = new Map();
+    this.cachePolicy = localStorage.getItem(POLICY_STORAGE_KEY) || 'monday';
+
+    this.lastRequestTime = 0;
+    this.minRequestGapMs = 400; // Client-side burst throttle
+    this.isRateLimited = false;
+    this.rateLimitReset = null;
   }
 
   setProvider(provider, apiKey = '') {
@@ -63,35 +225,124 @@ class F1ApiClient {
     } else {
       localStorage.removeItem('f1_apisports_key');
     }
-    this.cache.clear();
+    this.cacheManager.clearAll();
   }
 
-  async fetchWithCache(url, options = {}) {
-    const cached = this.cache.get(url);
-    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION_MS)) {
-      return cached.data;
+  setCachePolicy(policy) {
+    this.cachePolicy = policy;
+    localStorage.setItem(POLICY_STORAGE_KEY, policy);
+  }
+
+  getCachePolicy() {
+    return this.cachePolicy;
+  }
+
+  clearCache(season = null) {
+    this.cacheManager.clearAll(season);
+  }
+
+  /**
+   * Client-side request throttle: prevents accidental rapid clicks from spamming API
+   */
+  async throttleRequest() {
+    const now = Date.now();
+    const elapsed = now - this.lastRequestTime;
+    if (elapsed < this.minRequestGapMs) {
+      await new Promise(r => setTimeout(r, this.minRequestGapMs - elapsed));
+    }
+    this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * Fetches data with persistent local caching and rate-limiting shield
+   */
+  async fetchWithCache(url, cacheKey, season, options = {}, forceRefresh = false) {
+    const cachedEntry = this.cacheManager.getItem(cacheKey);
+
+    // 1. Return fresh local cache if valid and not forcing a refresh
+    if (!forceRefresh && this.cacheManager.isValid(cachedEntry, season, this.cachePolicy)) {
+      return {
+        data: cachedEntry.data,
+        isCached: true,
+        source: cachedEntry.source || 'Local Cache (Weekly Sync)',
+        timestamp: cachedEntry.timestamp
+      };
     }
 
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`HTTP Error: ${response.status}`);
+    // 2. Fetch fresh live data from client browser (unique per user IP)
+    await this.throttleRequest();
+
+    try {
+      const response = await fetch(url, options);
+
+      // Handle HTTP 429 (Too Many Requests / Rate limit exceeded)
+      if (response.status === 429) {
+        this.isRateLimited = true;
+        console.warn('Jolpica/F1 API rate limit encountered (429). Utilizing local cached data.');
+        if (cachedEntry && cachedEntry.data) {
+          return {
+            data: cachedEntry.data,
+            isCached: true,
+            source: 'Local Cache (Rate-Limit Shield Active)',
+            timestamp: cachedEntry.timestamp
+          };
+        }
+        throw new Error('API Rate Limited (429) and no local cache available');
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      this.isRateLimited = false;
+
+      // 3. Persist to browser LocalStorage for weekly reuse
+      this.cacheManager.setItem(cacheKey, data, {
+        season,
+        source: 'Jolpica Live API (Synced)'
+      });
+
+      return {
+        data,
+        isCached: false,
+        source: 'Jolpica Live API',
+        timestamp: Date.now()
+      };
+    } catch (err) {
+      // Graceful offline & rate limit degradation: fallback to existing local cache
+      if (cachedEntry && cachedEntry.data) {
+        console.warn(`Network error (${err.message}). Reverting to stored local cache.`);
+        return {
+          data: cachedEntry.data,
+          isCached: true,
+          source: 'Local Cache (Offline Fallback)',
+          timestamp: cachedEntry.timestamp
+        };
+      }
+      throw err;
     }
-    const data = await response.json();
-    this.cache.set(url, { data, timestamp: Date.now() });
-    return data;
   }
 
   /**
    * Fetches driver standings for given season (or 'current')
    */
-  async getDriverStandings(season = 'current') {
+  async getDriverStandings(season = 'current', forceRefresh = false) {
+    const cacheKey = `standings_${season}`;
     try {
       const url = `${JOLPICA_BASE}/${season}/driverStandings.json`;
-      const json = await this.fetchWithCache(url);
-      const list = json?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings;
-      const actualSeason = json?.MRData?.StandingsTable?.season || season;
+      const result = await this.fetchWithCache(url, cacheKey, season, {}, forceRefresh);
+      const list = result.data?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings;
+      const actualSeason = result.data?.MRData?.StandingsTable?.season || season;
+
       if (list && list.length > 0) {
-        return { season: actualSeason, standings: list, source: 'Jolpica Live API' };
+        return {
+          season: actualSeason,
+          standings: list,
+          source: result.source,
+          isCached: result.isCached,
+          timestamp: result.timestamp
+        };
       }
       throw new Error("Empty standings returned from API");
     } catch (err) {
@@ -99,7 +350,9 @@ class F1ApiClient {
       return { 
         season: FALLBACK_DATA_2026.season, 
         standings: FALLBACK_DATA_2026.standings, 
-        source: 'Live 2026 Fallback (Cached)' 
+        source: 'Live 2026 Fallback (Offline)',
+        isCached: true,
+        timestamp: Date.now()
       };
     }
   }
@@ -107,11 +360,13 @@ class F1ApiClient {
   /**
    * Fetches race calendar and determines remaining races based on current date
    */
-  async getSeasonRaces(season = 'current') {
+  async getSeasonRaces(season = 'current', forceRefresh = false) {
+    const cacheKey = `races_${season}`;
     try {
       const url = `${JOLPICA_BASE}/${season}.json`;
-      const json = await this.fetchWithCache(url);
-      const races = json?.MRData?.RaceTable?.Races;
+      const result = await this.fetchWithCache(url, cacheKey, season, {}, forceRefresh);
+      const races = result.data?.MRData?.RaceTable?.Races;
+      
       if (!races || races.length === 0) {
         throw new Error("No races found");
       }
@@ -144,15 +399,43 @@ class F1ApiClient {
       const remaining = parsed.filter(r => !r.isPast);
       return {
         allRaces: parsed,
-        remainingRaces: remaining.length > 0 ? remaining : FALLBACK_DATA_2026.remainingRaces
+        remainingRaces: remaining.length > 0 ? remaining : FALLBACK_DATA_2026.remainingRaces,
+        source: result.source,
+        isCached: result.isCached,
+        timestamp: result.timestamp
       };
     } catch (err) {
       console.warn("Using fallback calendar due to:", err.message);
       return {
         allRaces: FALLBACK_DATA_2026.remainingRaces,
-        remainingRaces: FALLBACK_DATA_2026.remainingRaces
+        remainingRaces: FALLBACK_DATA_2026.remainingRaces,
+        source: 'Live 2026 Fallback (Offline)',
+        isCached: true,
+        timestamp: Date.now()
       };
     }
+  }
+
+  /**
+   * Telemetry summary of local cache state for UI display
+   */
+  getCacheTelemetry(season = 'current') {
+    const standingsEntry = this.cacheManager.getItem(`standings_${season}`);
+    const racesEntry = this.cacheManager.getItem(`races_${season}`);
+    const entry = standingsEntry || racesEntry;
+
+    const hasCache = Boolean(entry && entry.timestamp);
+    const lastDate = hasCache ? new Date(entry.timestamp) : null;
+    const nextDate = new Date(getNextMondayTimestamp(MONDAY_CUTOFF_HOUR_UTC));
+
+    return {
+      hasCache,
+      lastSynced: lastDate ? lastDate.toLocaleString() : 'Not yet cached',
+      nextRefresh: nextDate.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' UTC',
+      policy: this.cachePolicy,
+      isRateLimited: this.isRateLimited,
+      season
+    };
   }
 }
 

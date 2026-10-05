@@ -45,21 +45,69 @@ class F1ChampionshipApp {
       });
     });
 
+    // Quick Refresh from Ticker
+    const btnQuickRefresh = document.getElementById('btnQuickRefresh');
+    btnQuickRefresh?.addEventListener('click', async () => {
+      btnQuickRefresh.classList.add('spinning');
+      btnQuickRefresh.disabled = true;
+      try {
+        await this.loadData(true);
+        this.showToast('Standings & calendar freshly synchronized!', 'success');
+      } catch (err) {
+        this.showToast(`Sync issue: ${err.message}`, 'warning');
+      } finally {
+        btnQuickRefresh.classList.remove('spinning');
+        btnQuickRefresh.disabled = false;
+      }
+    });
+
     // Modals
     const btnSettings = document.getElementById('btnSettings');
+    const apiStatusBadge = document.getElementById('apiStatusBadge');
     const modalSettings = document.getElementById('modalSettings');
     const closeSettings = document.getElementById('closeSettings');
     const saveSettings = document.getElementById('saveSettings');
+    const btnForceRefreshModal = document.getElementById('btnForceRefreshModal');
+    const btnClearCacheModal = document.getElementById('btnClearCacheModal');
 
-    btnSettings?.addEventListener('click', () => modalSettings?.classList.add('open'));
+    const openSettings = () => {
+      this.populateSettingsModal();
+      modalSettings?.classList.add('open');
+    };
+
+    btnSettings?.addEventListener('click', openSettings);
+    apiStatusBadge?.addEventListener('click', openSettings);
     closeSettings?.addEventListener('click', () => modalSettings?.classList.remove('open'));
+
+    btnForceRefreshModal?.addEventListener('click', async () => {
+      modalSettings?.classList.remove('open');
+      btnQuickRefresh?.classList.add('spinning');
+      try {
+        await this.loadData(true);
+        this.showToast('Cache refreshed from Jolpica Live API!', 'success');
+      } catch (err) {
+        this.showToast(`Refresh error: ${err.message}`, 'warning');
+      } finally {
+        btnQuickRefresh?.classList.remove('spinning');
+      }
+    });
+
+    btnClearCacheModal?.addEventListener('click', () => {
+      f1Api.clearCache();
+      this.populateSettingsModal();
+      this.showToast('Local browser cache cleared.', 'info');
+    });
 
     saveSettings?.addEventListener('click', () => {
       const provider = document.getElementById('apiProviderSelect')?.value || 'jolpica';
       const key = document.getElementById('apiKeyInput')?.value || '';
+      const policy = document.getElementById('cachePolicySelect')?.value || 'monday';
+      
+      f1Api.setCachePolicy(policy);
       f1Api.setProvider(provider, key);
       modalSettings?.classList.remove('open');
       this.loadData();
+      this.showToast('Cache policy & settings saved!', 'success');
     });
 
     const btnDeployGuide = document.getElementById('btnDeployGuide');
@@ -81,12 +129,51 @@ class F1ChampionshipApp {
     });
   }
 
-  async loadData() {
+  populateSettingsModal() {
+    const telemetry = f1Api.getCacheTelemetry(this.currentSeason);
+    const policySelect = document.getElementById('cachePolicySelect');
+    if (policySelect) policySelect.value = telemetry.policy;
+
+    const cacheStorageStatus = document.getElementById('cacheStorageStatus');
+    if (cacheStorageStatus) {
+      cacheStorageStatus.textContent = telemetry.hasCache ? 'Active (localStorage)' : 'Empty / Live';
+    }
+
+    const lastSynced = document.getElementById('cacheLastSynced');
+    if (lastSynced) {
+      lastSynced.textContent = telemetry.lastSynced;
+    }
+
+    const nextRefresh = document.getElementById('cacheNextRefresh');
+    if (nextRefresh) {
+      nextRefresh.textContent = telemetry.nextRefresh;
+    }
+  }
+
+  showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `f1-toast ${type}`;
+    let icon = 'ℹ️';
+    if (type === 'success') icon = '✅';
+    if (type === 'warning') icon = '⚠️';
+    if (type === 'danger') icon = '🚨';
+    toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+
+  async loadData(forceRefresh = false) {
     this.showLoading(true);
     try {
       const [standingsRes, racesRes] = await Promise.all([
-        f1Api.getDriverStandings(this.currentSeason),
-        f1Api.getSeasonRaces(this.currentSeason)
+        f1Api.getDriverStandings(this.currentSeason, forceRefresh),
+        f1Api.getSeasonRaces(this.currentSeason, forceRefresh)
       ]);
 
       this.standingsData = standingsRes.standings;
@@ -97,7 +184,19 @@ class F1ChampionshipApp {
       if (seasonLabel) seasonLabel.textContent = `${standingsRes.season} Season`;
 
       const apiStatus = document.getElementById('apiStatusLabel');
-      if (apiStatus) apiStatus.textContent = standingsRes.source || 'Live Connected';
+      const apiBadge = document.getElementById('apiStatusBadge');
+      if (apiStatus && apiBadge) {
+        if (standingsRes.isCached) {
+          apiBadge.classList.add('cached');
+          apiBadge.classList.remove('warning');
+          apiStatus.textContent = standingsRes.source || 'Local Cache (Weekly Sync)';
+        } else {
+          apiBadge.classList.remove('cached', 'warning');
+          apiStatus.textContent = standingsRes.source || 'Jolpica Live Synced';
+        }
+      }
+
+      this.populateSettingsModal();
 
       // Initialize mathematical calculator and simulator
       this.calculator = new ChampionshipCalculator(this.standingsData, this.racesData);
@@ -114,6 +213,7 @@ class F1ChampionshipApp {
       this.renderActiveTab();
     } catch (err) {
       console.error("Error loading F1 data:", err);
+      this.showToast(`Data load issue: ${err.message}`, 'warning');
     } finally {
       this.showLoading(false);
     }
