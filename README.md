@@ -39,22 +39,24 @@ A modern, high-octane Formula 1 World Drivers' Championship (WDC) calculator and
 
 ---
 
-## 📡 Recommended F1 Public APIs
+## 🛡️ API Rate-Limit Shield & Weekly Monday Caching
 
-### 1. **Jolpica F1 API (Recommended & Default)**
-- **Base URL:** `https://api.jolpi.ca/ergast/f1/`
-- **Cost:** **100% Free** (Open Source community successor to Ergast)
-- **API Key Required:** **NO** (Zero configuration, works immediately)
-- **Rate Limits:** 4 requests/second, 500 requests/hour (more than enough for personal & community projects)
-- **CORS:** Enabled out of the box.
-- **Data Provided:** Real-time driver standings, constructor standings, race calendars, sprint sessions, lap records, and historic seasons back to 1950.
+### 1. Per-User Public IP Isolation (Client-Side Architecture)
+Unlike architectures that proxy requests through a single backend server (where 10,000 visitors share 1 bottleneck IP address and quickly exceed API quotas), this app makes all API requests **directly from the visitor's browser (`fetch`)**:
+- Every visitor connects using their **own unique public IP address** (home Wi-Fi, cellular 5G, office network).
+- Jolpica/Ergast API rate limits (500 requests/hour per IP) are isolated per visitor, preventing one user from consuming another user's quota.
 
-### 2. **API-Sports (Formula 1 via RapidAPI)**
-- **Website:** [api-sports.io](https://api-sports.io)
-- **Cost:** Free tier available
-- **API Key Required:** Yes (Stored in Netlify environment variables or browser `localStorage`)
-- **Rate Limits:** 100 requests / day on free tier
-- **Use Case:** If you prefer a dashboard with usage analytics or telemetry widgets.
+### 2. Weekly Monday Local Storage (`localStorage`)
+F1 Grand Prix races take place on Sundays, with final classifications and steward decisions settled Sunday night.
+- Standings and race calendars are stored in browser **`localStorage`**.
+- The cache automatically refreshes on **Mondays at 06:00 UTC**.
+- Return visits between Tuesday and Sunday load in **0ms with ZERO API requests**.
+- Completed historical seasons (2025, 2024, 2021) are cached **permanently**.
+- A manual **"🔄 Refresh"** button in the header ticker and settings modal allows on-demand cache busting anytime.
+
+### 3. Graceful 429 Degradation & Burst Throttling
+- Built-in minimum request delay (400ms) prevents accidental request bursts when switching seasons.
+- If an external API returns HTTP 429 (Too Many Requests), the app automatically falls back to the local cached dataset and displays an informative warning chip without crashing.
 
 ---
 
